@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OTTv2 — Oẳn Tù Tì v2 Online</title>
+    <meta name="description" content="Trò chơi Oẳn Tù Tì v2 trực tuyến — Cờ chiến thuật Kéo Búa Bao cho 2 người chơi real-time qua PeerJS." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  LOBBY SCREEN                                      -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="lobby-screen" class="screen active">
+        <div class="lobby-container">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <span class="logo-emoji rock">✊</span>
+                    <span class="logo-emoji scissors">✌️</span>
+                    <span class="logo-emoji paper">✋</span>
+                </div>
+                <h1 class="logo-title">OTTv2</h1>
+                <p class="logo-subtitle">Oẳn Tù Tì — Chiến thuật Cờ bàn</p>
+            </div>
+
+            <div class="lobby-card glass">
+                <div class="lobby-section">
+                    <h2>Tạo phòng mới</h2>
+                    <p class="hint">Tạo phòng rồi gửi mã cho bạn bè</p>
+                    
+                    <div class="setting-item">
+                        <label for="input-piece-count">Số quân cờ cho 1 bên (Tối thiểu 3):</label>
+                        <div class="number-input-group">
+                            <input type="number" id="input-piece-count" min="3" max="36" value="9" />
+                            <span class="piece-total-hint">(Từ <strong id="total-pieces-label">3</strong> đến 36 quân)</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-create" class="btn btn-primary">
+                        <span class="btn-icon">🏠</span> Tạo phòng
+                    </button>
+                </div>
+
+                <div class="lobby-divider"><span>hoặc</span></div>
+
+                <div class="lobby-section">
+                    <h2>Vào chơi (Player 2)</h2>
+                    <p class="hint">Nhập mã phòng để thi đấu trực tiếp</p>
+                    <div class="input-group">
+                        <input type="text" id="input-room" placeholder="Nhập mã phòng…" maxlength="20" autocomplete="off" />
+                        <button id="btn-join" class="btn btn-secondary">
+                            <span class="btn-icon">🚀</span> Tham gia
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lobby-divider"><span>hoặc</span></div>
+
+                <div class="lobby-section">
+                    <h2>Vào xem trận đấu (Spectator)</h2>
+                    <p class="hint">Xem trực tiếp bất kỳ phòng đấu nào mà không tham gia chơi</p>
+                    <div class="input-group">
+                        <input type="text" id="input-spectate-room" placeholder="Nhập mã phòng muốn xem…" maxlength="20" autocomplete="off" />
+                        <button id="btn-spectate" class="btn btn-spectate">
+                            <span class="btn-icon">👁️</span> Xem trận
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lobby-divider"><span>hoặc</span></div>
+
+                <div class="lobby-section">
+                    <h2>Dashboard 4 Trận đấu</h2>
+                    <p class="hint">Xem đồng thời 4 trận đấu trên cùng một màn hình</p>
+                    <button id="btn-open-dashboard" class="btn btn-dashboard">
+                        <span class="btn-icon">📺</span> Mở Dashboard Multi-Match
+                    </button>
+                </div>
+
+                <div id="lobby-status" class="status-bar hidden">
+                    <div class="spinner"></div>
+                    <span id="lobby-status-text">Đang kết nối…</span>
+                </div>
+
+                <div id="room-info" class="room-info hidden">
+                    <p>Mã phòng của bạn:</p>
+                    <div class="room-code-display">
+                        <code id="room-code-value"></code>
+                        <button id="btn-copy" class="btn-icon-only" title="Sao chép">📋</button>
+                    </div>
+                    <p class="hint">Đang chờ đối thủ tham gia… (Khán giả có thể vào xem qua mã này)</p>
+                </div>
+            </div>
+
+            <div class="lobby-footer">
+                <p>🎮 Multi-Match Dashboard · Mode Spectator P2P Real-time</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  DASHBOARD & GAME SCREEN                           -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="game-screen" class="screen">
+        <!-- Top HUD -->
+        <header id="game-header">
+            <div class="hud-left">
+                <div class="player-badge opponent">
+                    <span class="badge-label">Đối thủ</span>
+                    <span class="badge-name" id="opponent-name">Player 2</span>
+                    <div class="piece-count" id="opponent-pieces">
+                        <span class="pc rock" title="Đấm">✊×3</span>
+                        <span class="pc paper" title="Lá">✋×3</span>
+                        <span class="pc scissors" title="Kéo">✌️×3</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div class="role-badge-tag" id="role-badge-tag">
+                    <span id="role-badge-text">🎮 Player 1</span>
+                </div>
+                <div class="turn-indicator" id="turn-indicator">
+                    <span id="turn-text">Lượt của bạn</span>
+                </div>
+                <div class="room-tag">
+                    <span class="room-tag-label" id="spectator-banner-label">Phòng:</span>
+                    <code id="game-room-id">—</code>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="player-badge self">
+                    <span class="badge-label">Bạn</span>
+                    <span class="badge-name" id="self-name">Player 1</span>
+                    <div class="piece-count" id="self-pieces">
+                        <span class="pc rock" title="Đấm">✊×3</span>
+                        <span class="pc paper" title="Lá">✋×3</span>
+                        <span class="pc scissors" title="Kéo">✌️×3</span>
+                    </div>
+                </div>
+                <button id="btn-leave-hud" class="btn-icon-only leave-btn" title="Rời phòng / Về sảnh">🚪</button>
+            </div>
+        </header>
+
+        <!-- Mobile View Mode Toggle -->
+        <div class="mobile-view-tabs">
+            <button id="tab-focus" class="tab-btn active">🎯 Bàn cờ chính</button>
+            <button id="tab-side" class="tab-btn">📺 3 Mini-Boards phụ (<span id="side-active-count">0</span>)</button>
+        </div>
+
+        <!-- Main Dashboard Container -->
+        <div id="dashboard-container">
+            <!-- 70% FOCUS BOARD AREA -->
+            <section id="focus-area">
+                <div id="spectator-lock-notice" class="spectator-notice hidden">
+                    🔒 Chế độ Người xem (Spectator Mode) — Bạn đang theo dõi trực tiếp trận đấu này
+                </div>
+
+                <main id="board-wrapper">
+                    <div class="col-labels top" id="col-labels-top"></div>
+                    <div class="board-with-rows">
+                        <div class="row-labels left" id="row-labels-left"></div>
+                        <div id="board" class="board"></div>
+                        <div class="row-labels right" id="row-labels-right"></div>
+                    </div>
+                    <div class="col-labels bottom" id="col-labels-bottom"></div>
+                </main>
+
+                <!-- Game Log Panel -->
+                <aside id="game-log-panel" class="glass">
+                    <h3>📜 Nhật ký trận đấu</h3>
+                    <ul id="game-log"></ul>
+                </aside>
+            </section>
+
+            <!-- 30% SIDEBAR MINI-BOARDS AREA -->
+            <aside id="side-panel" class="glass">
+                <div class="side-panel-header">
+                    <h3>📺 Live Mini-Boards (3 Phòng)</h3>
+                    <p class="hint">Xem đồng thời các trận đấu khác trong hệ thống</p>
+                </div>
+
+                <div class="mini-cards-wrapper">
+                    <!-- Mini Card 0 -->
+                    <div class="mini-card glass" id="mini-card-0">
+                        <div class="mini-card-header">
+                            <span class="mini-title">Phòng 1:</span>
+                            <input type="text" id="mini-input-0" placeholder="Mã phòng…" maxlength="10" />
+                            <button class="btn-mini-connect" data-slot="0" title="Kết nối">🔌</button>
+                            <button class="btn-mini-focus" data-slot="0" title="Đưa lên Bàn cờ chính">🎯 Xem</button>
+                        </div>
+                        <div class="mini-board-container" id="mini-board-0"></div>
+                        <div class="mini-card-status" id="mini-status-0">Chưa kết nối</div>
+                    </div>
+
+                    <!-- Mini Card 1 -->
+                    <div class="mini-card glass" id="mini-card-1">
+                        <div class="mini-card-header">
+                            <span class="mini-title">Phòng 2:</span>
+                            <input type="text" id="mini-input-1" placeholder="Mã phòng…" maxlength="10" />
+                            <button class="btn-mini-connect" data-slot="1" title="Kết nối">🔌</button>
+                            <button class="btn-mini-focus" data-slot="1" title="Đưa lên Bàn cờ chính">🎯 Xem</button>
+                        </div>
+                        <div class="mini-board-container" id="mini-board-1"></div>
+                        <div class="mini-card-status" id="mini-status-1">Chưa kết nối</div>
+                    </div>
+
+                    <!-- Mini Card 2 -->
+                    <div class="mini-card glass" id="mini-card-2">
+                        <div class="mini-card-header">
+                            <span class="mini-title">Phòng 3:</span>
+                            <input type="text" id="mini-input-2" placeholder="Mã phòng…" maxlength="10" />
+                            <button class="btn-mini-connect" data-slot="2" title="Kết nối">🔌</button>
+                            <button class="btn-mini-focus" data-slot="2" title="Đưa lên Bàn cờ chính">🎯 Xem</button>
+                        </div>
+                        <div class="mini-board-container" id="mini-board-2"></div>
+                        <div class="mini-card-status" id="mini-status-2">Chưa kết nối</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Victory Overlay -->
+        <div id="victory-overlay" class="overlay hidden">
+            <div class="victory-card glass">
+                <div class="victory-icon" id="victory-icon">🏆</div>
+                <h2 id="victory-title">Chiến thắng!</h2>
+                <p id="victory-desc">Bạn đã thắng trận đấu.</p>
+                <button id="btn-play-again" class="btn btn-primary">🔄 Chơi lại</button>
+                <button id="btn-back-lobby" class="btn btn-secondary">🏠 Về sảnh</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PeerJS CDN -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
