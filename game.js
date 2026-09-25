@@ -75,7 +75,13 @@ const roleBadgeTag       = $('role-badge-tag');
 const roleBadgeText      = $('role-badge-text');
 const spectatorBannerLbl = $('spectator-banner-label');
 const spectatorNotice    = $('spectator-lock-notice');
+const btnReturnMyMatch   = $('btn-return-my-match');
+const myMatchRoomCode    = $('my-match-room-code');
+const btnReturnLobbyNotice = $('btn-return-lobby-notice');
 const btnLeaveHud        = $('btn-leave-hud');
+
+let myPlayerMatchState   = null;
+
 
 const gameLog            = $('game-log');
 const victoryOvl         = $('victory-overlay');
@@ -239,6 +245,14 @@ function renderBoard() {
 function updateHUD() {
     if (state.isSpectator) {
         spectatorNotice.classList.remove('hidden');
+
+        if (myPlayerMatchState && btnReturnMyMatch && myMatchRoomCode) {
+            btnReturnMyMatch.classList.remove('hidden');
+            myMatchRoomCode.textContent = myPlayerMatchState.roomId;
+        } else if (btnReturnMyMatch) {
+            btnReturnMyMatch.classList.add('hidden');
+        }
+
         roleBadgeTag.className = 'role-badge-tag spectator';
         roleBadgeText.textContent = '👁️ Khán giả (Spectator)';
         spectatorBannerLbl.textContent = 'Đang xem ván đấu:';
@@ -459,6 +473,18 @@ function focusSideMatch(slotIndex) {
         return;
     }
 
+    // If user was an active player in their own match, save state
+    if (!state.isSpectator && state.myPlayer) {
+        myPlayerMatchState = {
+            roomId: roomId,
+            myPlayer: state.myPlayer,
+            isHost: isHost,
+            board: state.board,
+            turn: state.turn,
+            lastMove: state.lastMove,
+        };
+    }
+
     state.board = slot.board;
     state.turn = slot.turn || 1;
     state.isSpectator = true;
@@ -469,6 +495,28 @@ function focusSideMatch(slotIndex) {
     renderBoard();
     addLog(`👁️ Đã chuyển Bàn cờ chính sang xem phòng: ${roomId}`, 'system');
 }
+
+function returnToMyMatch() {
+    if (!myPlayerMatchState) return;
+
+    state.isSpectator = false;
+    state.myPlayer = myPlayerMatchState.myPlayer;
+    roomId = myPlayerMatchState.roomId;
+    isHost = myPlayerMatchState.isHost;
+
+    if (myPlayerMatchState.board) {
+        state.board = myPlayerMatchState.board;
+        state.turn = myPlayerMatchState.turn || 1;
+        state.lastMove = myPlayerMatchState.lastMove || null;
+    }
+    state.selected = null;
+    state.validMoves = [];
+    gameRoomId.textContent = roomId;
+
+    renderBoard();
+    addLog(`🎮 Đã quay trở lại trận đấu chính của bạn (Phòng: ${roomId})`, 'system');
+}
+
 
 // ═══════════════════════════════════════════════════════════
 //  GAME LOGIC
@@ -701,6 +749,7 @@ function createRoom() {
         state.lastMove = null;
         state.selected = null;
         state.validMoves = [];
+        myPlayerMatchState = { roomId: roomId, myPlayer: 1, isHost: true };
 
         startGame();
     });
@@ -1030,6 +1079,7 @@ function goBackToLobby() {
         validMoves: [],
         lastMove: null,
     };
+    myPlayerMatchState = null;
 
     gameScreen.classList.remove('active');
     lobbyScreen.classList.add('active');
@@ -1050,6 +1100,8 @@ function goBackToLobby() {
 btnCreate.addEventListener('click', createRoom);
 btnJoin.addEventListener('click', joinRoom);
 if (btnSpectate) btnSpectate.addEventListener('click', () => joinSpectator());
+if (btnReturnMyMatch) btnReturnMyMatch.addEventListener('click', returnToMyMatch);
+if (btnReturnLobbyNotice) btnReturnLobbyNotice.addEventListener('click', goBackToLobby);
 if (btnOpenDashboard) btnOpenDashboard.addEventListener('click', openDashboardDemo);
 
 inputRoom.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
