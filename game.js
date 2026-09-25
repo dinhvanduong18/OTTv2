@@ -372,11 +372,11 @@ function renderMiniBoard(index) {
 
     if (statusEl) {
         if (!slot.connected) {
-            statusEl.textContent = 'Chưa kết nối';
+            statusEl.textContent = slot.status || 'Chưa kết nối';
             statusEl.style.color = 'var(--text-muted)';
         } else {
             const turnStr = slot.turn === 1 ? 'P1 lượt' : 'P2 lượt';
-            statusEl.textContent = `🟢 P1 vs P2 (${turnStr})`;
+            statusEl.textContent = `🟢 ${slot.roomId || 'Phòng'} (${turnStr})`;
             statusEl.style.color = 'var(--accent-cyan)';
         }
     }
@@ -396,37 +396,59 @@ function connectMiniSlot(slotIndex) {
     if (!code) { inputEl.focus(); return; }
 
     const slot = sideSlots[slotIndex];
-    if (slot.conn) slot.conn.close();
-    if (slot.peer) slot.peer.destroy();
+    if (slot.conn) try { slot.conn.close(); } catch(e){}
+    if (slot.peer) try { slot.peer.destroy(); } catch(e){}
 
     slot.roomId = code;
     slot.status = 'Đang kết nối…';
+    slot.connected = false;
     renderMiniBoard(slotIndex);
 
     slot.peer = new Peer(undefined, { debug: 0 });
     slot.peer.on('open', () => {
-        slot.conn = slot.peer.connect('ottv2-' + code, { reliable: true });
+        const connection = slot.peer.connect('ottv2-' + code, { reliable: true });
+        slot.conn = connection;
 
-        slot.conn.on('open', () => {
-            slot.connected = true;
-            slot.status = 'Đã kết nối';
-            renderMiniBoard(slotIndex);
-        });
-
-        slot.conn.on('data', (data) => {
-            if (data.board) {
+        const handleData = (data) => {
+            if (data && (data.type === 'init' || data.type === 'move' || data.board)) {
                 slot.board = data.board;
                 slot.turn = data.turn || 1;
                 slot.connected = true;
+                slot.status = '🟢 Live';
                 renderMiniBoard(slotIndex);
             }
-        });
+        };
 
-        slot.conn.on('close', () => {
+        const handleOpen = () => {
+            slot.connected = true;
+            slot.status = 'Đã kết nối';
+            renderMiniBoard(slotIndex);
+        };
+
+        connection.on('data', handleData);
+        connection.on('close', () => {
             slot.connected = false;
             slot.status = 'Đã ngắt';
             renderMiniBoard(slotIndex);
         });
+        connection.on('error', (err) => {
+            slot.connected = false;
+            slot.status = 'Lỗi kết nối';
+            renderMiniBoard(slotIndex);
+        });
+
+        if (connection.open) {
+            handleOpen();
+        } else {
+            connection.on('open', handleOpen);
+        }
+    });
+
+    slot.peer.on('error', (err) => {
+        console.error(`Mini slot ${slotIndex} peer error:`, err);
+        slot.connected = false;
+        slot.status = 'Không tìm thấy phòng';
+        renderMiniBoard(slotIndex);
     });
 }
 
